@@ -3,16 +3,16 @@ package rbtree
 import (
 	"bytes"
 	"fmt"
+	"github.com/bgeraci714/keydb/shared"
 )
 
 // RBTree implementation
 type RBTree struct {
-	Root    *Node
-	Compare func(a, b interface{}) int
+	Root *Node
 }
 
 // Get returns the value found for a given key, using an a boolean indicator if found
-func (t *RBTree) Get(key string) (interface{}, bool) {
+func (t *RBTree) Get(key shared.Key) (shared.Value, bool) {
 	node, found := t.GetNode(key)
 	if found {
 		return node.Value, true
@@ -21,22 +21,22 @@ func (t *RBTree) Get(key string) (interface{}, bool) {
 }
 
 // GetNode returns the node found for a given key, using a boolean indicator if found
-func (t *RBTree) GetNode(key string) (*Node, bool) {
-	return getNodeRec(t.Root, key, t.Compare)
+func (t *RBTree) GetNode(key shared.Key) (*Node, bool) {
+	return getNodeRec(t.Root, key)
 }
 
-func getNodeRec(n *Node, key string, compare func(a, b interface{}) int) (*Node, bool) {
+func getNodeRec(n *Node, key shared.Key) (*Node, bool) {
 	// node not found
 	if n == nil {
 		return nil, false
 	}
 
-	cmp := compare(key, n.Key)
+	cmp := key.Compare(n.Key)
 	switch {
 	case cmp > 0: // key > n.Key
-		return getNodeRec(n.Right, key, compare)
+		return getNodeRec(n.Right, key)
 	case cmp < 0: // key < n.Key
-		return getNodeRec(n.Left, key, compare)
+		return getNodeRec(n.Left, key)
 	default: // node was found
 		return n, true
 	}
@@ -107,7 +107,7 @@ func rightRotate(t *RBTree, x *Node) {
 
 // Insert inserts with balanced algorithm involved
 // Translated from https://www.cs.auckland.ac.nz/software/AlgAnim/red_black.html
-func (t *RBTree) Insert(key string, val interface{}) {
+func (t *RBTree) Insert(key shared.Key, val shared.Value) {
 	// Perform tree insert for tree T and node n
 	t.insert(key, val)
 	n, _ := t.GetNode(key) // will be optimized later
@@ -168,8 +168,8 @@ func (t *RBTree) Insert(key string, val interface{}) {
 }
 
 // Insert adds a new key value pair to the tree
-func (t *RBTree) insert(key string, val interface{}) {
-	t.Root = insertRec(t.Root, key, val, t.Compare, nil)
+func (t *RBTree) insert(key shared.Key, val shared.Value) {
+	t.Root = insertRec(t.Root, key, val, nil)
 }
 
 // Size returns the size of the tree
@@ -203,17 +203,17 @@ func sizeRec(n *Node) int {
 	return 1 + sizeRec(n.Left) + sizeRec(n.Right)
 }
 
-func insertRec(n *Node, key string, val interface{}, compare func(a, b interface{}) int, parent *Node) *Node {
+func insertRec(n *Node, key shared.Key, val shared.Value, parent *Node) *Node {
 	if n == nil {
 		return &Node{key, val, nil, nil, false, parent} // might be an issue if this is allocated on function's stack, be mindful of this
 	}
 
-	cmp := compare(key, n.Key)
+	cmp := key.Compare(n.Key)
 	switch {
 	case cmp > 0: // key > n.Key
-		n.Right = insertRec(n.Right, key, val, compare, n)
+		n.Right = insertRec(n.Right, key, val, n)
 	case cmp < 0: // key < n.Key
-		n.Left = insertRec(n.Left, key, val, compare, n)
+		n.Left = insertRec(n.Left, key, val, n)
 	default: // key == n.Key
 		n.Value = val // overwrite old value if the keys match
 	}
@@ -230,19 +230,19 @@ func PrintInorder(n *Node) {
 }
 
 // Delete deletes item with the matching key
-func (t *RBTree) Delete(key string) {
-	t.Root = delete(t.Root, key, t.Compare)
+func (t *RBTree) Delete(key shared.Key) {
+	t.Root = delete(t.Root, key)
 }
 
-func delete(n *Node, key string, compare func(a, b interface{}) int) *Node {
+func delete(n *Node, key shared.Key) *Node {
 	if n == nil {
 		return nil
 	}
 
-	if cmp := compare(key, n.Key); cmp > 0 { // key > n.Key
-		n.Right = delete(n.Right, key, compare)
+	if cmp := key.Compare(n.Key); cmp > 0 { // key > n.Key
+		n.Right = delete(n.Right, key)
 	} else if cmp < 0 { // key < n.Key
-		n.Left = delete(n.Left, key, compare)
+		n.Left = delete(n.Left, key)
 	} else { // key == n.Key
 		if n.Right == nil { // if no right child
 			return n.Left
@@ -276,37 +276,37 @@ func deleteMin(n *Node) *Node {
 
 // ToString prints out a dash spaced version of the tree
 func (t RBTree) ToString() string {
-	return printSubtree(t.Root, 0)
+	return string(printSubtree(t.Root, 0))
 }
 
-func printSubtree(n *Node, h int) string {
+func printSubtree(n *Node, h int) []byte {
 	if n == nil {
-		return ""
+		return nil
 	}
-	s := ""
+	s := []byte{}
 	for i := 0; i < h; i++ {
-		s += "-"
+		s = append(s, '-')
 	}
-	s += n.Key + "\n"
-	s += printSubtree(n.Left, h+1)
-	s += printSubtree(n.Right, h+1)
+	s = append(n.Key, '\n')
+	s = append(s, printSubtree(n.Left, h+1)...)
+	s = append(s, printSubtree(n.Right, h+1)...)
 	return s
 }
 
 // ToMap converts tree to a map
-func (t RBTree) ToMap() map[string]interface{} {
-	m := make(map[string]interface{})
+func (t RBTree) ToMap() map[string]shared.Value {
+	m := make(map[string]shared.Value)
 	addToMap(t.Root, &m)
 	return m
 }
 
-func addToMap(n *Node, m *map[string]interface{}) {
+func addToMap(n *Node, m *map[string]shared.Value) {
 	if n == nil {
 		return
 	}
 	addToMap(n.Left, m)
 	addToMap(n.Right, m)
-	(*m)[n.Key] = n.Value
+	(*m)[string(n.Key)] = n.Value
 }
 
 // MarshalBinary marshals the tree into a byte format

@@ -1,5 +1,7 @@
 package rbtree
 
+import "github.com/bgeraci714/keydb/shared"
+
 // Color is a typedef for booleans
 type Color bool
 
@@ -11,8 +13,8 @@ const Black = false
 
 // Node are nodes of base BST
 type Node struct {
-	Key    string
-	Value  interface{}
+	Key    shared.Key
+	Value  shared.Value
 	Left   *Node
 	Right  *Node
 	Color  Color
@@ -23,14 +25,14 @@ type Node struct {
 // returns 1 if n's is greater than other's
 // returns 0 if n's Key is equal to other's
 // returns -1 if n's Key is less than other's
-func (n Node) Compare(other Node) int {
-	if n.Key > other.Key {
-		return 1
-	} else if n.Key < other.Key {
-		return -1
-	}
-	return 0
-}
+// func (n Node) Compare(other Node) int {
+// 	if n.Key > other.Key {
+// 		return 1
+// 	} else if n.Key < other.Key {
+// 		return -1
+// 	}
+// 	return 0
+// }
 
 // Grandparent returns the grandparent of the current node
 func (n *Node) Grandparent() *Node {
